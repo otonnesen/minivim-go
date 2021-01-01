@@ -1,3 +1,3 @@
-module github.com/otonnesen/minivim-go
+module minivim
 
 go 1.13
