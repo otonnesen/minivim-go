@@ -17,9 +17,10 @@ type TermConfig struct {
 	origTios syscall.Termios
 }
 
-var config TermConfig
-
+// Sets terminal to non-canonical mode and returns a TermConfig struct
 func Init() (TermConfig, error) {
+	var config TermConfig
+
 	origTios, err := enableRawMode()
 	if err != nil {
 		return TermConfig{}, err
@@ -33,7 +34,11 @@ func Init() (TermConfig, error) {
 	return config, err
 }
 
-func Close() error {
+// Returns terminal to canonical mode and clears screen.
+// TODO: save and restore contents of screen prior to opening
+func (config TermConfig) Close() error {
+	fmt.Fprint(os.Stdout, "\x1b[2J") // Clear entire screen
+	fmt.Fprint(os.Stdout, "\x1b[H")  // Reset cursor position
 	return disableRawMode(config)
 }
 
@@ -48,7 +53,8 @@ func getWinsize() (int, int) {
 		ws_ypixel uint16
 	}{}
 
-	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(), syscall.TIOCGWINSZ, uintptr(unsafe.Pointer(&ws)))
+	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(),
+		syscall.TIOCGWINSZ, uintptr(unsafe.Pointer(&ws)))
 	if e != 0 {
 		log.Fatalf("Syscall error: %v\n", e)
 	}
@@ -58,7 +64,8 @@ func getWinsize() (int, int) {
 
 // Resets terminal to default
 func disableRawMode(config TermConfig) error {
-	r, _, e := syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(), syscall.TCSETS, uintptr(unsafe.Pointer(&config.origTios)))
+	r, _, e := syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(),
+		syscall.TCSETS, uintptr(unsafe.Pointer(&config.origTios)))
 	if r != 0 {
 		return errors.New(fmt.Sprintf("%v", e))
 	}
@@ -69,7 +76,8 @@ func disableRawMode(config TermConfig) error {
 // Sets terminal to non-canonical mode
 func enableRawMode() (syscall.Termios, error) {
 	var origTios syscall.Termios
-	r, _, e := syscall.Syscall(syscall.SYS_IOCTL, os.Stdout.Fd(), syscall.TCGETS, uintptr(unsafe.Pointer(&origTios)))
+	r, _, e := syscall.Syscall(syscall.SYS_IOCTL, os.Stdout.Fd(),
+		syscall.TCGETS, uintptr(unsafe.Pointer(&origTios)))
 	if r != 0 {
 		return syscall.Termios{}, errors.New(fmt.Sprintf("%v", e))
 	}
@@ -88,7 +96,8 @@ func enableRawMode() (syscall.Termios, error) {
 
 	raw.Cflag &^= syscall.CS8
 
-	r, _, e = syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(), syscall.TCSETS, uintptr(unsafe.Pointer(&raw)))
+	r, _, e = syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(),
+		syscall.TCSETS, uintptr(unsafe.Pointer(&raw)))
 	if r != 0 {
 		return syscall.Termios{}, errors.New(fmt.Sprintf("%v", e))
 	}
