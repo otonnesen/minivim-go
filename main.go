@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
+	"minivim/screen"
 	"minivim/terminal"
 )
 
@@ -19,25 +19,29 @@ const (
 )
 
 type editorConfig struct {
-	cx        int
-	cy        int
-	rowOff    int
-	colOff    int
-	num_lines int
-	term      terminal.TermConfig
+	screen screen.Screen
+	term   terminal.Term
 }
 
 var E editorConfig
 
 func main() {
-	term, err := terminal.Init()
+	term, err := terminal.New()
 	if err != nil {
 		log.Panicf("%v\n", err)
 	}
 	E.term = term
 
+	f, err := os.Open("./test")
+	if err != nil {
+		log.Panicf("%v\n", err)
+	}
+
+	screen := screen.New(f, E.term.Rows, E.term.Cols)
+	E.screen = screen
+
 	for {
-		refreshScreen()
+		fmt.Fprintf(os.Stdout, E.screen.String())
 		if processKey() == Break {
 			break
 		}
@@ -46,23 +50,20 @@ func main() {
 
 }
 
-// Re-draws the screen to reflect changes in the editor's internal state.
-func refreshScreen() {
-	fmt.Fprintf(os.Stdout, "\x1b[?25l") // Hide cursor
-	fmt.Fprintf(os.Stdout, "\x1b[H")    // Reset cursor position
-
-	fmt.Fprintf(os.Stdout, draw())
-
-	fmt.Fprintf(os.Stdout, "\x1b[%d;%dH", E.cx, E.cy) // Move cursor
-	fmt.Fprintf(os.Stdout, "\x1b[?25h")               // Show cursor
-}
-
 // Handles key presses.
 func processKey() ExitCode {
 	c := readKey()
 	switch c {
 	case ctrlKey('q'):
 		return Break
+	case 'h':
+		E.screen.CursorX -= 1
+	case 'j':
+		E.screen.CursorY += 1
+	case 'k':
+		E.screen.CursorY -= 1
+	case 'l':
+		E.screen.CursorX += 1
 	}
 	return Continue
 }
@@ -80,16 +81,4 @@ func readKey() byte {
 		log.Panicf("%v\n", err)
 	}
 	return c
-}
-
-// Returns file contents as a string, including escape sequences for
-// terminal output.
-func draw() string {
-	var b strings.Builder
-	for i := 0; i < E.term.Rows; i++ {
-		fmt.Fprint(&b, "\x1b[2K") // Clear line
-		fmt.Fprint(&b, "~")
-		fmt.Fprint(&b, "\r\n")
-	}
-	return b.String()
 }

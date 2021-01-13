@@ -11,19 +11,19 @@ import (
 	"unsafe"
 )
 
-type TermConfig struct {
+type Term struct {
 	Rows     int
 	Cols     int
 	origTios syscall.Termios
 }
 
-// Sets terminal to non-canonical mode and returns a TermConfig struct
-func Init() (TermConfig, error) {
-	var config TermConfig
+// Sets terminal to non-canonical mode and returns a Term struct
+func New() (Term, error) {
+	var config Term
 
 	origTios, err := enableRawMode()
 	if err != nil {
-		return TermConfig{}, err
+		return Term{}, err
 	}
 	config.origTios = origTios
 
@@ -36,7 +36,7 @@ func Init() (TermConfig, error) {
 
 // Returns terminal to canonical mode and clears screen.
 // TODO: save and restore contents of screen prior to opening
-func (config TermConfig) Close() error {
+func (config Term) Close() error {
 	fmt.Fprint(os.Stdout, "\x1b[2J") // Clear entire screen
 	fmt.Fprint(os.Stdout, "\x1b[H")  // Reset cursor position
 	return disableRawMode(config)
@@ -63,7 +63,7 @@ func getWinsize() (int, int) {
 }
 
 // Resets terminal to default
-func disableRawMode(config TermConfig) error {
+func disableRawMode(config Term) error {
 	r, _, e := syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(),
 		syscall.TCSETS, uintptr(unsafe.Pointer(&config.origTios)))
 	if r != 0 {
