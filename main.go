@@ -57,13 +57,13 @@ func processKey() ExitCode {
 	case ctrlKey('q'):
 		return Break
 	case 'h':
-		E.screen.CursorX -= 1
+		E.screen.Left()
 	case 'j':
-		E.screen.CursorY += 1
+		E.screen.Down()
 	case 'k':
-		E.screen.CursorY -= 1
+		E.screen.Up()
 	case 'l':
-		E.screen.CursorX += 1
+		E.screen.Right()
 	}
 	return Continue
 }
