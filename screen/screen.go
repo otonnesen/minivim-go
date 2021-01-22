@@ -88,6 +88,15 @@ func (s *Screen) updateViewport() {
 }
 
 func (s *Screen) fixBounds() {
+	// We fix the bounds on CursorY before CursorX because we use CursorY
+	// in the calculation of CursorX's bounds.
+	if s.CursorY > s.numLines {
+		s.CursorY = s.numLines
+	}
+	if s.CursorY < 1 {
+		s.CursorY = 1
+	}
+
 	if s.CursorX < 1 {
 		s.CursorX = 1
 	}
@@ -95,12 +104,6 @@ func (s *Screen) fixBounds() {
 	// multiple code points only count as one character.
 	if s.CursorX > len([]rune(s.lines[s.CursorY-1])) {
 		s.CursorX = len([]rune(s.lines[s.CursorY-1]))
-	}
-	if s.CursorY > s.numLines {
-		s.CursorY = s.numLines
-	}
-	if s.CursorY < 1 {
-		s.CursorY = 1
 	}
 }
 
