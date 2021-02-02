@@ -11,13 +11,15 @@ import (
 	"unsafe"
 )
 
+// Term stores terminal information, including the terminal's original config
+// to be restored after exiting.
 type Term struct {
 	Rows     int
 	Cols     int
 	origTios syscall.Termios
 }
 
-// Sets terminal to non-canonical mode and returns a Term struct
+// New sets the terminal to non-canonical mode and allocates a new Term.
 func New() (Term, error) {
 	var config Term
 
@@ -34,7 +36,7 @@ func New() (Term, error) {
 	return config, err
 }
 
-// Returns terminal to canonical mode and clears screen.
+// Close returns the terminal to canonical mode and clears the screen.
 // TODO: save and restore contents of screen prior to opening
 func (config Term) Close() error {
 	fmt.Fprint(os.Stdout, "\x1b[2J") // Clear entire screen

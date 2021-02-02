@@ -10,22 +10,27 @@ import (
 var refreshes int
 var size int
 
+// Screen stores information regarding the viewport and cursor.
 type Screen struct {
 	file     *os.File
 	lines    []string
 	viewport strings.Builder
 	rows     int
 	cols     int
-	CursorX  int
-	CursorY  int
+	cursorX  int
+	cursorY  int
 	numLines int
 }
 
+// String returns the viewport in its current state, including terminal
+// escape sequences.
 func (s Screen) String() string {
 	s.updateViewport()
 	return s.viewport.String()
 }
 
+// New allocates a new Screen with viewport size rows x cols and displaying
+// the contents of f.
 func New(f *os.File, rows, cols int) Screen {
 	s := Screen{}
 
@@ -34,8 +39,8 @@ func New(f *os.File, rows, cols int) Screen {
 	s.rows = rows
 	s.cols = cols
 
-	s.CursorX = 1
-	s.CursorY = 1
+	s.cursorX = 1
+	s.cursorY = 1
 
 	// We allocate one less line than the terminal has to make room for
 	// the debug info.
@@ -55,7 +60,9 @@ func New(f *os.File, rows, cols int) Screen {
 }
 
 func (s *Screen) updateViewport() {
-	// s.viewport = strings.Builder{}
+	// TODO: scrolling
+	// will have to change for loop since it won't necessarily start at
+	// line 1
 	refreshes++
 	size = len(s.viewport.String())
 
@@ -79,53 +86,61 @@ func (s *Screen) updateViewport() {
 	fmt.Fprintf(&s.viewport, "\x1b[2K")
 
 	fmt.Fprintf(&s.viewport, "screen: %vx%v, ", s.cols, s.rows)
-	fmt.Fprintf(&s.viewport, "cursor: (%v,%v), ", s.CursorX, s.CursorY)
-	fmt.Fprintf(&s.viewport, "row length: %v, ", len([]rune(s.lines[s.CursorY-1])))
+	fmt.Fprintf(&s.viewport, "cursor: (%v,%v), ", s.cursorX, s.cursorY)
+	fmt.Fprintf(&s.viewport, "row length: %v, ", len([]rune(s.lines[s.cursorY-1])))
 	fmt.Fprintf(&s.viewport, "num length: %v, ", s.numLines)
 	fmt.Fprintf(&s.viewport, "s.viewport size: %v, ", viewportSize)
 	fmt.Fprintf(&s.viewport, "size: %v, ", size)
 	fmt.Fprintf(&s.viewport, "# refreshes: %v", refreshes)
 
-	fmt.Fprintf(&s.viewport, "\x1b[%d;%dH", s.CursorY, s.CursorX) // Move cursor
+	fmt.Fprintf(&s.viewport, "\x1b[%d;%dH", s.cursorY, s.cursorX) // Move cursor
 	fmt.Fprintf(&s.viewport, "\x1b[?25h")                         // Unhide cursor
 }
 
 func (s *Screen) fixBounds() {
-	// We fix the bounds on CursorY before CursorX because we use CursorY
-	// in the calculation of CursorX's bounds.
-	if s.CursorY > s.numLines {
-		s.CursorY = s.numLines
+	// We fix the bounds on cursorY before cursorX because we use cursorY
+	// in the calculation of cursorX's bounds.
+	if s.cursorY > s.numLines {
+		s.cursorY = s.numLines
 	}
-	if s.CursorY < 1 {
-		s.CursorY = 1
+	if s.cursorY < 1 {
+		s.cursorY = 1
 	}
 
-	if s.CursorX < 1 {
-		s.CursorX = 1
+	if s.cursorX < 1 {
+		s.cursorX = 1
 	}
 	// We convert the string into a rune array so characters using
 	// multiple code points only count as one character.
-	if s.CursorX > len([]rune(s.lines[s.CursorY-1])) {
-		s.CursorX = len([]rune(s.lines[s.CursorY-1]))
+	if s.cursorX > len([]rune(s.lines[s.cursorY-1])) {
+		s.cursorX = len([]rune(s.lines[s.cursorY-1]))
 	}
 }
 
+// Left moves the cursor left one position, and updates the Screen's state
+// accordingly.
 func (s *Screen) Left() {
-	s.CursorX -= 1
+	s.cursorX -= 1
 	s.fixBounds()
 }
 
+// Down moves the cursor down one position, and updates the Screen's state
+// accordingly.
 func (s *Screen) Down() {
-	s.CursorY += 1
+	s.cursorY += 1
 	s.fixBounds()
 }
 
+// Up moves the cursor up one position, and updates the Screen's state
+// accordingly.
 func (s *Screen) Up() {
-	s.CursorY -= 1
+	s.cursorY -= 1
 	s.fixBounds()
 }
 
+// Right moves the cursor right one position, and updates the Screen's state
+// accordingly.
 func (s *Screen) Right() {
-	s.CursorX += 1
+	s.cursorX += 1
 	s.fixBounds()
 }
