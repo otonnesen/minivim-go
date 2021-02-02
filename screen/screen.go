@@ -72,6 +72,9 @@ func (s *Screen) updateViewport() {
 		}
 	}
 
+	// Exclude the next (debug) line in viewport size calculation
+	viewportSize := len(s.viewport.String())
+
 	// Debug
 	fmt.Fprintf(&s.viewport, "\x1b[2K")
 
@@ -79,7 +82,7 @@ func (s *Screen) updateViewport() {
 	fmt.Fprintf(&s.viewport, "cursor: (%v,%v), ", s.CursorX, s.CursorY)
 	fmt.Fprintf(&s.viewport, "row length: %v, ", len([]rune(s.lines[s.CursorY-1])))
 	fmt.Fprintf(&s.viewport, "num length: %v, ", s.numLines)
-	fmt.Fprintf(&s.viewport, "s.viewport size: %v, ", len(s.viewport.String()))
+	fmt.Fprintf(&s.viewport, "s.viewport size: %v, ", viewportSize)
 	fmt.Fprintf(&s.viewport, "size: %v, ", size)
 	fmt.Fprintf(&s.viewport, "# refreshes: %v", refreshes)
 
