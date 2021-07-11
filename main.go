@@ -1,6 +1,5 @@
 package main
 
-import "C"
 import (
 	"bufio"
 	"fmt"
@@ -32,7 +31,9 @@ func main() {
 	}
 	E.term = term
 
-	f, err := os.Open("./test")
+	fname := os.Args[1]
+
+	f, err := os.Open(fname)
 	if err != nil {
 		log.Panicf("%v\n", err)
 	}
