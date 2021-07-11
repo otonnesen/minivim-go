@@ -70,22 +70,36 @@ func (s *Screen) updateViewport() {
 		}
 	}
 
-	// Exclude the next (debug) line in viewport size calculation
+	fmt.Fprintf(&s.viewport, "\x1b[H")             // Reset cursor position
+	fmt.Fprintf(&s.viewport, "\x1b[%dB", s.rows-1) // Move cursor to bottom line
+	fmt.Fprintf(&s.viewport, s.printDebugLine())
+
+	var x int
+	if l := len(s.file.Current.Text); s.cursorX < l {
+		x = s.cursorX
+	} else {
+		x = l
+	}
+	fmt.Fprintf(&s.viewport, "\x1b[%d;%dH", s.cursorY, x) // Move cursor
+	fmt.Fprintf(&s.viewport, "\x1b[?25h")                 // Unhide cursor
+
+}
+
+func (s Screen) printDebugLine() string {
+	var ret strings.Builder
+
 	viewportSize := len(s.viewport.String())
 
-	// Debug
-	fmt.Fprintf(&s.viewport, "\x1b[2K")
+	fmt.Fprintf(&ret, "\x1b[2K")
+	fmt.Fprintf(&ret, "screen: %vx%v, ", s.cols, s.rows)
+	fmt.Fprintf(&ret, "cursor: (%v,%v), ", s.cursorX, s.cursorY)
+	fmt.Fprintf(&ret, "row length: %v, ", s.file.Current.Length())
+	fmt.Fprintf(&ret, "num length: %v, ", s.file.NumLines)
+	fmt.Fprintf(&ret, "s.viewport size: %v, ", viewportSize)
+	fmt.Fprintf(&ret, "size: %v, ", size)
+	fmt.Fprintf(&ret, "# refreshes: %v", refreshes)
 
-	fmt.Fprintf(&s.viewport, "screen: %vx%v, ", s.cols, s.rows)
-	fmt.Fprintf(&s.viewport, "cursor: (%v,%v), ", s.cursorX, s.cursorY)
-	fmt.Fprintf(&s.viewport, "row length: %v, ", s.file.Current.Length())
-	fmt.Fprintf(&s.viewport, "num length: %v, ", s.file.NumLines)
-	fmt.Fprintf(&s.viewport, "s.viewport size: %v, ", viewportSize)
-	fmt.Fprintf(&s.viewport, "size: %v, ", size)
-	fmt.Fprintf(&s.viewport, "# refreshes: %v", refreshes)
-
-	fmt.Fprintf(&s.viewport, "\x1b[%d;%dH", s.cursorY, s.cursorX) // Move cursor
-	fmt.Fprintf(&s.viewport, "\x1b[?25h")                         // Unhide cursor
+	return ret.String()
 }
 
 func (s *Screen) fixBounds() {
