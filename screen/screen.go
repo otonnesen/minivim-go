@@ -102,9 +102,9 @@ func (s Screen) printDebugLine() string {
 	return ret.String()
 }
 
-func (s *Screen) fixBounds() {
-	// We fix the bounds on cursorY before cursorX because we use cursorY
-	// in the calculation of cursorX's bounds.
+// fixRowBounds checks if s.cursorY is outside the allowed bounds (1 <=
+// s.cursorY <= # lines in file) and sets it to a valid value if it isn't.
+func (s *Screen) fixRowBounds() {
 	if s.cursorY > s.file.NumLines {
 		s.cursorY = s.file.NumLines
 		s.file.Current = s.file.Back
@@ -113,7 +113,11 @@ func (s *Screen) fixBounds() {
 		s.cursorY = 1
 		s.file.Current = s.file.Front
 	}
+}
 
+// fixColBounds checks if s.cursorX is outside the allowed boudns (1 <=
+// s.CursorX <= current line length) and sets it to a valid value if it isn't.
+func (s *Screen) fixColBounds() {
 	if s.cursorX < 1 {
 		s.cursorX = 1
 	}
@@ -125,8 +129,11 @@ func (s *Screen) fixBounds() {
 // Left moves the cursor left one position, and updates the Screen's state
 // accordingly.
 func (s *Screen) Left() {
+	// We call fixColBounds beforehand to fix s.cursorX in the case that
+	// it's larger than the length of the current line.
+	s.fixColBounds()
 	s.cursorX -= 1
-	s.fixBounds()
+	s.fixColBounds()
 }
 
 // Down moves the cursor down one position, and updates the Screen's state
@@ -134,7 +141,7 @@ func (s *Screen) Left() {
 func (s *Screen) Down() {
 	s.cursorY += 1
 	s.file.Current = s.file.Current.Next
-	s.fixBounds()
+	s.fixRowBounds()
 }
 
 // Up moves the cursor up one position, and updates the Screen's state
@@ -142,12 +149,16 @@ func (s *Screen) Down() {
 func (s *Screen) Up() {
 	s.cursorY -= 1
 	s.file.Current = s.file.Current.Prev
-	s.fixBounds()
+	s.fixRowBounds()
 }
 
 // Right moves the cursor right one position, and updates the Screen's state
 // accordingly.
 func (s *Screen) Right() {
-	s.cursorX += 1
-	s.fixBounds()
+	// We skip this if cursorX is at the end of the line so we don't
+	// overwrite the saved cursorX value unnecessarily
+	if s.cursorX < s.file.Current.Length() {
+		s.cursorX += 1
+		s.fixColBounds()
+	}
 }
