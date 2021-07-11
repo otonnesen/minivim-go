@@ -1,8 +1,8 @@
 package screen
 
 import (
-	"bufio"
 	"fmt"
+	"minivim/file"
 	"os"
 	"strings"
 )
@@ -12,14 +12,12 @@ var size int
 
 // Screen stores information regarding the viewport and cursor.
 type Screen struct {
-	file     *os.File
-	lines    []string
+	file     file.File
 	viewport strings.Builder
 	rows     int
 	cols     int
 	cursorX  int
 	cursorY  int
-	numLines int
 }
 
 // String returns the viewport in its current state, including terminal
@@ -34,26 +32,13 @@ func (s Screen) String() string {
 func New(f *os.File, rows, cols int) Screen {
 	s := Screen{}
 
-	s.file = f
-
 	s.rows = rows
 	s.cols = cols
 
 	s.cursorX = 1
 	s.cursorY = 1
 
-	// We allocate one less line than the terminal has to make room for
-	// the debug info.
-	s.lines = make([]string, s.rows-1)
-
-	scanner := bufio.NewScanner(s.file)
-
-	s.numLines = 0
-
-	for scanner.Scan() {
-		s.lines[s.numLines] = scanner.Text()
-		s.numLines++
-	}
+	s.file = file.New(f)
 
 	return s
 
@@ -61,21 +46,27 @@ func New(f *os.File, rows, cols int) Screen {
 
 func (s *Screen) updateViewport() {
 	// TODO: scrolling
-	// will have to change for loop since it won't necessarily start at
-	// line 1
+	// will have to change for loop since it won't necessarily start
+	// at line 1
 	refreshes++
 	size = len(s.viewport.String())
 
 	fmt.Fprintf(&s.viewport, "\x1b[?25l") // Hide cursor
+	fmt.Fprintf(&s.viewport, "\x1b[2J")   // Clear entire screen
 	fmt.Fprintf(&s.viewport, "\x1b[H")    // Reset cursor position
 
 	// File contents
-	for _, line := range s.lines {
-		fmt.Fprintf(&s.viewport, "\x1b[2K") // Clear line
-		if len(line) > 0 {
-			fmt.Fprintf(&s.viewport, "%v\r\n", line)
+	c := s.file.Front
+	sep := "\r\n"
+	for l := 0; l < s.rows; l++ {
+		if l == s.rows-1 {
+			sep = ""
+		}
+		if c != nil {
+			fmt.Fprintf(&s.viewport, "%v%v", c.Text, sep)
+			c = c.Next
 		} else {
-			fmt.Fprintf(&s.viewport, "~\r\n")
+			fmt.Fprintf(&s.viewport, "~%v", sep)
 		}
 	}
 
@@ -87,8 +78,8 @@ func (s *Screen) updateViewport() {
 
 	fmt.Fprintf(&s.viewport, "screen: %vx%v, ", s.cols, s.rows)
 	fmt.Fprintf(&s.viewport, "cursor: (%v,%v), ", s.cursorX, s.cursorY)
-	fmt.Fprintf(&s.viewport, "row length: %v, ", len([]rune(s.lines[s.cursorY-1])))
-	fmt.Fprintf(&s.viewport, "num length: %v, ", s.numLines)
+	fmt.Fprintf(&s.viewport, "row length: %v, ", s.file.Current.Length())
+	fmt.Fprintf(&s.viewport, "num length: %v, ", s.file.NumLines)
 	fmt.Fprintf(&s.viewport, "s.viewport size: %v, ", viewportSize)
 	fmt.Fprintf(&s.viewport, "size: %v, ", size)
 	fmt.Fprintf(&s.viewport, "# refreshes: %v", refreshes)
@@ -100,20 +91,20 @@ func (s *Screen) updateViewport() {
 func (s *Screen) fixBounds() {
 	// We fix the bounds on cursorY before cursorX because we use cursorY
 	// in the calculation of cursorX's bounds.
-	if s.cursorY > s.numLines {
-		s.cursorY = s.numLines
+	if s.cursorY > s.file.NumLines {
+		s.cursorY = s.file.NumLines
+		s.file.Current = s.file.Back
 	}
 	if s.cursorY < 1 {
 		s.cursorY = 1
+		s.file.Current = s.file.Front
 	}
 
 	if s.cursorX < 1 {
 		s.cursorX = 1
 	}
-	// We convert the string into a rune array so characters using
-	// multiple code points only count as one character.
-	if s.cursorX > len([]rune(s.lines[s.cursorY-1])) {
-		s.cursorX = len([]rune(s.lines[s.cursorY-1]))
+	if l := s.file.Current.Length(); s.cursorX > l {
+		s.cursorX = l
 	}
 }
 
@@ -128,6 +119,7 @@ func (s *Screen) Left() {
 // accordingly.
 func (s *Screen) Down() {
 	s.cursorY += 1
+	s.file.Current = s.file.Current.Next
 	s.fixBounds()
 }
 
@@ -135,6 +127,7 @@ func (s *Screen) Down() {
 // accordingly.
 func (s *Screen) Up() {
 	s.cursorY -= 1
+	s.file.Current = s.file.Current.Prev
 	s.fixBounds()
 }
 
