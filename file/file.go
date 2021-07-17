@@ -21,17 +21,17 @@ func (l Line) Length() int {
 	return len([]rune(l.Text))
 }
 
-// File stores information related to the currently open file
-type File struct {
+// FileContents stores information related to the currently open file
+type FileContents struct {
 	Front    *Line
 	Back     *Line
 	Current  *Line
 	NumLines int
 }
 
-// New allocates a new File storing the contents of f.
-func New(f *os.File) File {
-	file := File{}
+// New allocates a new FileContents storing the contents of f.
+func New(f *os.File) FileContents {
+	file := FileContents{}
 
 	file.Front = &Line{}
 	file.Current = file.Front

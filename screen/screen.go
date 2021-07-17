@@ -12,7 +12,7 @@ var size int
 
 // Screen stores information regarding the viewport and cursor.
 type Screen struct {
-	file     file.File
+	file     file.FileContents
 	viewport strings.Builder
 	rows     int
 	cols     int
