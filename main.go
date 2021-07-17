@@ -38,7 +38,13 @@ func main() {
 		log.Panicf("%v\n", err)
 	}
 
-	screen := screen.New(f, E.term.Rows, E.term.Cols)
+	logFile, err := os.OpenFile("debug.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Panicf("%v\n", err)
+	}
+	l := log.New(logFile, "DEBUG: ", log.Lshortfile)
+
+	screen := screen.New(f, l, E.term.Rows, E.term.Cols)
 	E.screen = screen
 
 	for {
@@ -65,6 +71,10 @@ func processKey() ExitCode {
 		E.screen.Up()
 	case 'l':
 		E.screen.Right()
+	case ctrlKey('e'):
+		E.screen.ScrollDown(1)
+	case ctrlKey('y'):
+		E.screen.ScrollUp(1)
 	}
 	return Continue
 }
